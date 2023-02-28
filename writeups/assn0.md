@@ -1,15 +1,15 @@
 Assignment 0 Writeup
 =============
 
-My name: [your name here]
+My name: Oh SangYoon
 
-My POVIS ID: [your povis id here]
+My POVIS ID: dbs1367
 
-My student ID (numeric): [your student id here]
+My student ID (numeric): 20200220
 
-This assignment took me about [n] hours to do (including the time on studying, designing, and writing the code).
+This assignment took me about [4] hours to do (including the time on studying, designing, and writing the code).
 
-My secret code from section 2.1 was: [code here]
+My secret code from section 2.1 was: 42d89f1196
 
 - Optional: I had unexpected difficulty with: [describe]
 
