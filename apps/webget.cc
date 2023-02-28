@@ -17,8 +17,9 @@ void get_URL(const string &host, const string &path) {
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
 
-    const Address hostaddr(host, "http");
     TCPSocket tcpsock;
+    const Address hostaddr(host, "http");
+
     tcpsock.connect(hostaddr);
 
     tcpsock.write("GET " + path + " HTTP/1.1\r\n");
@@ -26,7 +27,7 @@ void get_URL(const string &host, const string &path) {
     tcpsock.write("Connection: close\r\n");
     tcpsock.write("\r\n");
 
-    while(!tcpsock.eof()) {
+    while (!tcpsock.eof()) {
         cout << tcpsock.read();
     }
 
