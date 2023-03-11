@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <string>
-
 #include <vector>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -20,15 +19,13 @@ class StreamReassembler {
     std::vector<char> _unassembled_buffer;  // unassembled_buffer in which data have to be reassembled
     std::vector<bool> _occupied;            // indiccates whether each index of buffer is occupied
 
-    size_t _seperator;                      // border line within the buffer
-    size_t _first_unassembled_index;        // index of first byte not assmbled yet
-    size_t _unassembled_bytes;              // # of unassembled bytes
-    bool _is_eof_data_received;             // eof data flag
+    size_t _seperator;                // border line within the buffer
+    size_t _first_unassembled_index;  // index of first byte not assmbled yet
+    size_t _unassembled_bytes;        // # of unassembled bytes
+    bool _is_eof_data_received;       // eof data flag
 
-
-
-    size_t store_data(const string &data, const size_t index);    // store data into the buffer as much as possible
-
+    size_t store_data(const std::string &data, const size_t index);  // store data into the buffer as much as possible
+    void write_to_output();                                          // write reassembled data to output byte stream
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
