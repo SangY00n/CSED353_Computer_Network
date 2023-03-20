@@ -25,7 +25,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         uint64_t abs_64bit_ackno = _reassembler.stream_out().bytes_written() + 1;
         // calculate the absolute sequence number by calling unwrap function
         uint64_t abs_64bit_seqno = unwrap(seqno, *_isn, abs_64bit_ackno);
-        // if absolute sequence number is zero, 
+        // if absolute sequence number is zero, index will be negative number...
         if(abs_64bit_seqno!=0) {
             _reassembler.push_substring(data, abs_64bit_seqno - 1, fin);
         }
@@ -37,6 +37,10 @@ optional<WrappingInt32> TCPReceiver::ackno() const {
         return nullopt;
     }
     uint64_t abs_64bit_ackno = _reassembler.stream_out().bytes_written() + 1; // the total number of written bytes to buffer and 1 byte for SYN
+    
+    if(_reassembler.stream_out().input_ended()) {
+        abs_64bit_ackno++; // add 1 byte for FIN
+    }
 
     return wrap(abs_64bit_ackno, *_isn);
 }
