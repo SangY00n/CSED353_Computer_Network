@@ -20,15 +20,25 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     if((_isn == nullptr) && syn) {
         _isn.reset(new WrappingInt32(seqno.raw_value()));   // initialize ISN(Initial Sequence Number)
         _reassembler.push_substring(data, 0, fin);          // push data into the stream
-    } else {
+    } else if(_isn != nullptr) {
+        // calculate the absolute acknowledgement number using the total number of written bytes in order to get the absolute sequence number
         uint64_t abs_64bit_ackno = _reassembler.stream_out().bytes_written() + 1;
+        // calculate the absolute sequence number by calling unwrap function
         uint64_t abs_64bit_seqno = unwrap(seqno, *_isn, abs_64bit_ackno);
+        // if absolute sequence number is zero, 
         if(abs_64bit_seqno!=0) {
             _reassembler.push_substring(data, abs_64bit_seqno - 1, fin);
         }
     }
 }
 
-optional<WrappingInt32> TCPReceiver::ackno() const { return {}; }
+optional<WrappingInt32> TCPReceiver::ackno() const { 
+    if(_isn == nullptr) {
+        return nullopt;
+    }
+    uint64_t abs_64bit_ackno = _reassembler.stream_out().bytes_written() + 1; // the total number of written bytes to buffer and 1 byte for SYN
 
-size_t TCPReceiver::window_size() const { return {}; }
+    return wrap(abs_64bit_ackno, *_isn);
+}
+
+size_t TCPReceiver::window_size() const { return _reassembler.stream_out().remaining_capacity(); }
