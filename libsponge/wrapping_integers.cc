@@ -10,12 +10,14 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
+#define TWOTOTHETHIRTYTWO 0x100000000
+
 //! Transform an "absolute" 64-bit sequence number (zero-indexed) into a WrappingInt32
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    uint32_t abs_seqno32 = n & 0xFFFFFFFF;
+    return isn + abs_seqno32;
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +31,19 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    uint64_t abs_seqno =  n >= isn ? n - isn : (TWOTOTHETHIRTYTWO - isn.raw_value()) + n.raw_value();  // 0 ~ 2^32 - 1 사이 값만 나옴
+
+    if(abs_seqno >= checkpoint) {
+        return abs_seqno;
+    }
+
+    uint64_t checkpoint_high_32bit = (checkpoint / TWOTOTHETHIRTYTWO) * TWOTOTHETHIRTYTWO;
+    uint64_t checkpoint_low_32bit = checkpoint % TWOTOTHETHIRTYTWO;
+
+    uint64_t nearby_abs_seqno = (checkpoint_low_32bit - abs_seqno) > (TWOTOTHETHIRTYTWO/2) ? checkpoint_high_32bit + abs_seqno + TWOTOTHETHIRTYTWO : checkpoint_high_32bit + abs_seqno;
+
+    // uint64_t lower_nearby_abs_seqno = checkpoint_high_32bit + abs_seqno;
+    // uint64_t upper_nearby_abs_seqno = checkpoint_high_32bit + abs_seqno + TWOTOTHETHIRTYTWO;
+
+    return nearby_abs_seqno;
 }
