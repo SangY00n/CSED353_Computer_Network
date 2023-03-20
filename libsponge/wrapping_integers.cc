@@ -31,19 +31,20 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    uint64_t abs_seqno =  n >= isn ? n - isn : (TWOTOTHETHIRTYTWO - isn.raw_value()) + n.raw_value();  // 0 ~ 2^32 - 1 사이 값만 나옴
-
+    uint32_t abs_seqno =  n >= isn ? n - isn : (TWOTOTHETHIRTYTWO - isn.raw_value()) + n.raw_value();  // 0 ~ 2^32 - 1 사이 값만 나옴
     if(abs_seqno >= checkpoint) {
         return abs_seqno;
     }
 
     uint64_t checkpoint_high_32bit = (checkpoint / TWOTOTHETHIRTYTWO) * TWOTOTHETHIRTYTWO;
-    uint64_t checkpoint_low_32bit = checkpoint % TWOTOTHETHIRTYTWO;
+    uint32_t checkpoint_low_32bit = checkpoint & 0xFFFFFFFF;
+    uint64_t nearby_abs_seqno;
 
-    uint64_t nearby_abs_seqno = (checkpoint_low_32bit - abs_seqno) > (TWOTOTHETHIRTYTWO/2) ? checkpoint_high_32bit + abs_seqno + TWOTOTHETHIRTYTWO : checkpoint_high_32bit + abs_seqno;
-
-    // uint64_t lower_nearby_abs_seqno = checkpoint_high_32bit + abs_seqno;
-    // uint64_t upper_nearby_abs_seqno = checkpoint_high_32bit + abs_seqno + TWOTOTHETHIRTYTWO;
+    if(checkpoint_low_32bit > abs_seqno) {
+        nearby_abs_seqno = (checkpoint_low_32bit - abs_seqno) >= (TWOTOTHETHIRTYTWO/2) ? checkpoint_high_32bit + abs_seqno + TWOTOTHETHIRTYTWO : checkpoint_high_32bit + abs_seqno;
+    } else {
+        nearby_abs_seqno = (abs_seqno - checkpoint_low_32bit) >= (TWOTOTHETHIRTYTWO/2) ? checkpoint_high_32bit + abs_seqno - TWOTOTHETHIRTYTWO : checkpoint_high_32bit + abs_seqno;
+    }
 
     return nearby_abs_seqno;
 }
