@@ -9,6 +9,23 @@
 #include <functional>
 #include <queue>
 
+
+class RetransmissionTimer {
+  public:
+    size_t _init_rto;
+    size_t _rto;
+
+    size_t _t;
+
+    bool _is_running;
+
+    RetransmissionTimer(const uint16_t retx_timeout);
+    bool tick(const size_t ms_since_last_tick);
+    void start();
+    void stop();
+};
+
+
 //! \brief The "sender" part of a TCP implementation.
 
 //! Accepts a ByteStream, divides it up into segments and sends the
@@ -104,21 +121,6 @@ class TCPSender {
     //! \brief relative seqno for the next byte to be sent
     WrappingInt32 next_seqno() const { return wrap(_next_seqno, _isn); }
     //!@}
-};
-
-class RetransmissionTimer {
-  public:
-    size_t _init_rto;
-    size_t _rto;
-
-    size_t _t;
-
-    bool _is_running;
-
-    RetransmissionTimer(const uint16_t retx_timeout);
-    bool tick(const size_t ms_since_last_tick);
-    void start();
-    void stop();
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_SENDER_HH
