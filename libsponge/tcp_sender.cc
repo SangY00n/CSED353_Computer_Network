@@ -59,11 +59,11 @@ void TCPSender::fill_window() {
             if(!_is_fin_sent) {
                 // SYN_ACKED2 state (FIN flag has't been sent yet)
                 temp_seg.header().fin = 1;
+                _is_fin_sent = true;
                 temp_seg.header().seqno = wrap(_next_seqno, _isn);
                 _segments_out.push(temp_seg);
                 _outstanding_segments.push(temp_seg);
                 _retx_timer.start();
-                _is_fin_sent = true;
                 _next_seqno += temp_seg.length_in_sequence_space();
                 _bytes_in_flight += temp_seg.length_in_sequence_space();
             }
@@ -83,6 +83,7 @@ void TCPSender::fill_window() {
             temp_seg.header().seqno = wrap(_next_seqno, _isn);
             _segments_out.push(temp_seg);
             _outstanding_segments.push(temp_seg);
+            _retx_timer.start();
             _next_seqno += temp_seg.length_in_sequence_space();
             _bytes_in_flight += temp_seg.length_in_sequence_space();
         } else {
@@ -101,6 +102,48 @@ void TCPSender::fill_window() {
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { 
     uint64_t unwrapped_ackno = unwrap(ackno, _isn, _previous_ackno);
     _window_size = window_size;
+
+    // 만약 이전에 도착한 가장 큰 ackno(_previous_ackno) 보다 작거나 같은 경우.. -> 아무것도 안해도 됨
+    if(unwrapped_ackno <= _previous_ackno) return;
+
+    // When the receiver gives the sender an ackno that acknowledges the successful receipt of new data
+    // ( the ackno bigger than any previous ackno )
+    // 이전에 도착한 가장 큰 ackno(_previous_ackno) 보다 크다면, _previous_ackno 업데이트한 뒤
+    _previous_ackno = unwrapped_ackno;
+    // Set the RTO back to its "initial value"
+    _retx_timer._rto = _retx_timer._init_rto;
+    // Restart the retransmission timer
+    _retx_timer.stop();
+    _retx_timer.start();
+    // If the sender has any outstading data, restart the retransmission timer so that it will expire after RTO milliseconds
+    // collection of outstanding segments 를 확인해야 함
+    while(!_outstanding_segments.empty()) {
+        const TCPSegment &temp_seg = _outstanding_segments.front();
+        uint64_t seg_unwrapped_seqno = unwrap(temp_seg.header().seqno, _isn, _previous_ackno);
+        uint64_t temp_seg_size = temp_seg.length_in_sequence_space();
+        if(seg_unwrapped_seqno + temp_seg.length_in_sequence_space() <= unwrapped_ackno) {
+            _outstanding_segments.pop();
+            _bytes_in_flight -= temp_seg_size;
+        } else {
+            break;
+        }
+    }
+    // Reset the count of "consecutive retransmissions" back to zero
+    _consecutive_retransmissions = 0;
+
+    
+    // fill the window again if new space has opened up
+    fill_window();
+
+    // if there exists outstanding segment, restart the retransmission timer
+    if(!_outstanding_segments.empty()) {
+        _retx_timer.stop();
+        _retx_timer.start();
+    }
+    // When all outstanding data has been acknowledged, stop the retransmission timer.
+    else {
+        _retx_timer.stop();
+    }
 
 }
 
@@ -123,7 +166,8 @@ RetransmissionTimer::RetransmissionTimer(const uint16_t retx_timeout)
 
 bool RetransmissionTimer::tick(const size_t ms_since_last_tick) {
     bool is_expired = false;
-    
+    if(!_is_running) return false;
+
     // check if timer expired by comparing running time with rto value
     is_expired = _t + ms_since_last_tick >= _rto;
 
