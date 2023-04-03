@@ -89,4 +89,21 @@ class TCPSender {
     //!@}
 };
 
+class RetransmissionTimer {
+  private:
+    size_t _init_rto;
+    size_t _rto;
+
+    size_t _t;
+
+    bool _is_running;
+
+  public:
+    RetransmissionTimer(const uint16_t retx_timeout);
+    bool tick(const size_t ms_since_last_tick);
+    bool is_running();
+    void start();
+    void stop();
+};
+
 #endif  // SPONGE_LIBSPONGE_TCP_SENDER_HH
