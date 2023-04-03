@@ -32,6 +32,23 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
+    // Retransmission timer
+    RetransmissionTimer _retx_timer;
+
+    // the biggest ackno of the previous acknos
+    uint64_t _previous_ackno;
+    uint16_t _window_size; // 0 이거나 receiver로부터 받기 전엔 1
+
+    std::queue<TCPSegment> _outstanding_segments{};
+
+    // # sequence numbers; occupied by segments sent but not yet acked
+    size_t _bytes_in_flight;
+    // # consecutive retransmissions that have occurred in a row
+    unsigned int _consecutive_retransmissions;
+
+    // indicator for FIN_SENT state
+    bool _is_fin_sent;
+
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
@@ -90,7 +107,7 @@ class TCPSender {
 };
 
 class RetransmissionTimer {
-  private:
+  public:
     size_t _init_rto;
     size_t _rto;
 
@@ -98,10 +115,8 @@ class RetransmissionTimer {
 
     bool _is_running;
 
-  public:
     RetransmissionTimer(const uint16_t retx_timeout);
     bool tick(const size_t ms_since_last_tick);
-    bool is_running();
     void start();
     void stop();
 };
