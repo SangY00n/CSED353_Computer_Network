@@ -148,7 +148,28 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void TCPSender::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
+void TCPSender::tick(const size_t ms_since_last_tick) { 
+    bool is_expired = _retx_timer.tick(ms_since_last_tick);
+
+    if(is_expired) { // If the timer has expired
+        // Retransmit the earliest segment that hasn't been fully acknowledged by the TCP receiver.
+        if(!_outstanding_segments.empty()) {
+            _segments_out.push(_outstanding_segments.front());
+        }
+
+        // If the window size is nonzero:
+        if(_window_size!=0) {
+            // i. increase # consecutive retransmissions beacuse I just retransmitted something
+            _consecutive_retransmissions++;
+            // ii. Double the value of RTO - "exponential backoff"
+            _retx_timer._rto *= 2;
+        }
+
+        // Reset the timer and start it
+        _retx_timer.stop();
+        _retx_timer.start();
+    }
+}
 
 unsigned int TCPSender::consecutive_retransmissions() const { return _consecutive_retransmissions; }
 
