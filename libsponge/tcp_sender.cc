@@ -103,6 +103,9 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     uint64_t unwrapped_ackno = unwrap(ackno, _isn, _previous_ackno);
     _window_size = window_size;
 
+    // Impossible ackno (beyond next seqno) is ignored
+    if(unwrapped_ackno > _next_seqno) return;
+
     // 만약 이전에 도착한 가장 큰 ackno(_previous_ackno) 보다 작거나 같은 경우.. -> 아무것도 안해도 됨
     if(unwrapped_ackno <= _previous_ackno) return;
 
