@@ -9,9 +9,8 @@
 #include <functional>
 #include <queue>
 
-
 class RetransmissionTimer {
-  public:
+  private:
     size_t _init_rto;
     size_t _rto;
 
@@ -19,12 +18,14 @@ class RetransmissionTimer {
 
     bool _is_running;
 
+  public:
     RetransmissionTimer(const uint16_t retx_timeout);
     bool tick(const size_t ms_since_last_tick);
     void start();
     void stop();
+    void set_rto_init();
+    void double_rto();
 };
-
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -54,7 +55,7 @@ class TCPSender {
 
     // the biggest ackno of the previous acknos
     uint64_t _previous_ackno;
-    uint16_t _window_size; // 0 이거나 receiver로부터 받기 전엔 1
+    uint16_t _window_size;  // 0 이거나 receiver로부터 받기 전엔 1
 
     std::queue<TCPSegment> _outstanding_segments{};
 
