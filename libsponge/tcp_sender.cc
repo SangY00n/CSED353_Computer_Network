@@ -70,6 +70,7 @@ void TCPSender::fill_window() {
             break;
         }
 
+        // SYN_ACKED1 state
         // make segment no bigger than MAX_PAYLOAD_SIZE (1452 bytes)
         size_t bytes_to_send =
             available_window_size < TCPConfig::MAX_PAYLOAD_SIZE ? available_window_size : TCPConfig::MAX_PAYLOAD_SIZE;
@@ -178,7 +179,7 @@ unsigned int TCPSender::consecutive_retransmissions() const { return _consecutiv
 
 void TCPSender::send_empty_segment() {
     // A segment that occupies no sequence numbers (no payload, SYN or FIN) doesn't need to be remembered or
-    // retransmitted. Thus, there's no need to store empty egments in outstanding queue
+    // retransmitted. Thus, there's no need to store empty segments in outstanding queue
     TCPSegment empty_seg;
     empty_seg.header().seqno = wrap(_next_seqno, _isn);
     _segments_out.push(empty_seg);
