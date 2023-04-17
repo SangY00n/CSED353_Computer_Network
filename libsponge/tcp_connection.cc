@@ -25,16 +25,34 @@ void TCPConnection::segment_received(const TCPSegment &seg) { DUMMY_CODE(seg); }
 bool TCPConnection::active() const { return {}; }
 
 size_t TCPConnection::write(const string &data) {
-    DUMMY_CODE(data);
-    return {};
+    // write the data into the outbound stream
+    size_t accepted_bytes = _sender.stream_in().write(data);
+    // create segments to send
+    _sender.fill_window();
+    // send all segments
+    flush_sender();
+
+    return accepted_bytes;
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
 
-void TCPConnection::end_input_stream() {}
+void TCPConnection::end_input_stream() {
+    // give the end_input signal to the outbound stream
+    _sender.stream_in().end_input();
+    // create segments if possible
+    _sender.fill_window();
+    // send all segments
+    flush_sender();
+}
 
-void TCPConnection::connect() {}
+void TCPConnection::connect() {
+    _sender.fill_window(); // create a SYN segment
+    TCPSegment syn_seg = _sender.segments_out().front();
+    _sender.segments_out().pop();
+    _segments_out.push(syn_seg);
+}
 
 TCPConnection::~TCPConnection() {
     try {
@@ -45,5 +63,22 @@ TCPConnection::~TCPConnection() {
         }
     } catch (const exception &e) {
         std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
+    }
+}
+
+void TCPConnection::flush_sender() {
+    while (!_sender.segments_out().empty()) {
+        TCPSegment front_seg = _sender.segments_out().front();
+        _sender.segments_out().pop();
+
+        // before sending the segment, ask the TCPReceiver for ackno and window size
+        if(_receiver.ackno() != nullopt) { // if there is an ackno,
+            front_seg.header().ackno = _receiver.ackno().value();
+            front_seg.header().ack = true; // set ack flag
+        }
+        front_seg.header().win = _receiver.window_size();
+
+        // push(send) the segment into outboud queue
+        _segments_out.push(front_seg);
     }
 }

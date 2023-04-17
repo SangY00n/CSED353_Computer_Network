@@ -21,6 +21,9 @@ class TCPConnection {
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
 
+    //! \brief flush(send) all semgents in the sender's outbound queue
+    void flush_sender();
+
   public:
     //! \name "Input" interface for the writer
     //!@{
