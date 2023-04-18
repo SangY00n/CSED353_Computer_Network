@@ -102,8 +102,49 @@ size_t TCPConnection::write(const string &data) {
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) { 
     _time_since_last_segment_received += ms_since_last_tick; // update time_since_last_segment_received
-    _sender.tick(ms_since_last_tick); // call sender's tick method
-    ////////////////////////////////////////////////////////
+    _sender.tick(ms_since_last_tick); // tell the sender about the passage of time
+
+    // if the number of consecutive retransmissions is more than an upper limit
+    if(_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
+        // abort connection
+        _active = false;
+        // set the error flag on the inbound and outbound ByteStreams
+        _receiver.stream_out().set_error();
+        _sender.stream_in().set_error();
+
+        // send a reset segment to the remote peer
+        while(!_sender.segments_out().empty()) {
+            // before creating a reset segment, empty out the sender's semgnets_out queue
+            _sender.segments_out().pop();
+        }
+        _sender.send_empty_segment();
+        TCPSegment rst_seg = _sender.segments_out().front();
+        _sender.segments_out().pop();
+        rst_seg.header().rst=true;
+        _segments_out.push(rst_seg);
+
+        return;
+    }
+
+    // A clean shutdown : the way we get to "done" without an error
+    // prerequisites #1 ~ #3 are satisfied -> the connection is "done"
+    // prereq #1 : inbound stream has been fully assembled and has ended
+    // prereq #2 : outbound stream has been ended and fully sent
+    // prereq #3 : outbound stream has been fully acknowledged by remote peer
+    if(_receiver.stream_out().input_ended() && _fin_acked) {
+        if(_linger_after_streams_finish==false) { // no need to linger
+            _active = false;
+        } else { // need to linger
+            // connection is only done after enough time has elapsed
+            // since the last segment was received
+            if(_time_since_last_segment_received >= 10*_cfg.rt_timeout) {
+                _active = false;
+            }
+
+        }
+    }
+
+    flush_sender(); // if there exist segments to send, send them
  }
 
 void TCPConnection::end_input_stream() {
