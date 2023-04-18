@@ -24,6 +24,14 @@ class TCPConnection {
     //! \brief flush(send) all semgents in the sender's outbound queue
     void flush_sender();
 
+    size_t _time_since_last_segment_received{0};
+    bool _active{false};
+
+    bool _syn_sent{false};
+    bool _syn_acked{false};
+    bool _fin_sent{false};
+    bool _fin_acked{false};
+
   public:
     //! \name "Input" interface for the writer
     //!@{
