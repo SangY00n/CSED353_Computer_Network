@@ -29,8 +29,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         if(header.syn) {
             _active = true;
             _receiver.segment_received(seg);
-            if(_syn_sent) {
-                _syn_acked=true;
+            if(_is_syn_sent) {
+                _is_syn_acked=true;
             } else {
                 connect();
             }
@@ -39,9 +39,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
 
     // if the segment has the RST flag
-    if(header.rst) {
+    if(header.rst) {        
         _active = false; // connection is dead, active() should return false
-        
+
         // set the error flag on the inbound and outbound ByteStreams
         _receiver.stream_out().set_error();
         _sender.stream_in().set_error();
@@ -62,9 +62,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _sender.fill_window();
     }
 
-    if(_fin_sent) {
+    if(_is_fin_sent) {
         if(header.ackno==_sender.next_seqno()) { // if local's FIN segment was acked
-            _fin_acked=true; // set _fin_acked
+            _is_fin_acked=true; // set _is_fin_acked
             // if _linger_after_streams_finish is false, there's no need to lingering. so connection is over...
             _active = _active && _linger_after_streams_finish; // set _active false if linger_after_streams_finish is false
         }
@@ -106,23 +106,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 
     // if the number of consecutive retransmissions is more than an upper limit
     if(_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
-        // abort connection
-        _active = false;
-        // set the error flag on the inbound and outbound ByteStreams
-        _receiver.stream_out().set_error();
-        _sender.stream_in().set_error();
-
-        // send a reset segment to the remote peer
-        while(!_sender.segments_out().empty()) {
-            // before creating a reset segment, empty out the sender's semgnets_out queue
-            _sender.segments_out().pop();
-        }
-        _sender.send_empty_segment();
-        TCPSegment rst_seg = _sender.segments_out().front();
-        _sender.segments_out().pop();
-        rst_seg.header().rst=true;
-        _segments_out.push(rst_seg);
-
+        send_rst();
         return;
     }
 
@@ -131,7 +115,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     // prereq #1 : inbound stream has been fully assembled and has ended
     // prereq #2 : outbound stream has been ended and fully sent
     // prereq #3 : outbound stream has been fully acknowledged by remote peer
-    if(_receiver.stream_out().input_ended() && _fin_acked) {
+    if(_receiver.stream_out().input_ended() && _is_fin_acked) {
         if(_linger_after_streams_finish==false) { // no need to linger
             _active = false;
         } else { // need to linger
@@ -140,7 +124,6 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
             if(_time_since_last_segment_received >= 10*_cfg.rt_timeout) {
                 _active = false;
             }
-
         }
     }
 
@@ -157,13 +140,10 @@ void TCPConnection::end_input_stream() {
 }
 
 void TCPConnection::connect() {
-    _sender.fill_window(); // create a SYN segment
-    TCPSegment syn_seg = _sender.segments_out().front();
-    _sender.segments_out().pop();
-    _segments_out.push(syn_seg);
-
     _active=true;
-    _syn_sent=true;
+    _sender.fill_window(); // create a SYN segment
+    flush_sender();
+    _is_syn_sent=true;
 }
 
 TCPConnection::~TCPConnection() {
@@ -172,6 +152,7 @@ TCPConnection::~TCPConnection() {
             cerr << "Warning: Unclean shutdown of TCPConnection\n";
 
             // Your code here: need to send a RST segment to the peer
+            send_rst();
         }
     } catch (const exception &e) {
         std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
@@ -182,7 +163,7 @@ void TCPConnection::flush_sender() {
     while (!_sender.segments_out().empty()) {
         TCPSegment front_seg = _sender.segments_out().front();
         _sender.segments_out().pop();
-
+    
         // before sending the segment, ask the TCPReceiver for ackno and window size
         if(_receiver.ackno().has_value()) { // if there is an ackno,
             front_seg.header().ackno = _receiver.ackno().value();
@@ -194,7 +175,26 @@ void TCPConnection::flush_sender() {
         _segments_out.push(front_seg);
 
         if(front_seg.header().fin) { // if FIN flag is set
-            _fin_sent=true; // set _fin_sent
+            _is_fin_sent=true; // set _is_fin_sent
         }
     }
+}
+
+void TCPConnection::send_rst() {
+    // set the error flag on the inbound and outbound ByteStreams
+    _sender.stream_in().set_error();
+    _receiver.stream_out().set_error();
+    // connection is dead, no longer active
+    _active = false;
+
+    // send a reset segment to the remote peer
+    while(!_sender.segments_out().empty()) {
+        // before creating a reset segment, empty out the sender's semgnets_out queue
+        _sender.segments_out().pop();
+    }
+    _sender.send_empty_segment();
+    TCPSegment rst_seg = _sender.segments_out().front();
+    _sender.segments_out().pop();
+    rst_seg.header().rst=true;
+    _segments_out.push(rst_seg);
 }

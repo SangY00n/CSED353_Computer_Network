@@ -21,16 +21,16 @@ class TCPConnection {
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
 
-    //! \brief flush(send) all semgents in the sender's outbound queue
     void flush_sender();
-
     size_t _time_since_last_segment_received{0};
-    bool _active{false};
+    bool _active{true};
+    bool _is_syn_sent{false};
+    bool _is_syn_acked{false};
+    bool _is_fin_sent{false};
+    bool _is_fin_acked{false};
 
-    bool _syn_sent{false};
-    bool _syn_acked{false};
-    bool _fin_sent{false};
-    bool _fin_acked{false};
+    void send_rst();
+
 
   public:
     //! \name "Input" interface for the writer
