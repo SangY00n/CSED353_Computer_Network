@@ -20,13 +20,13 @@ size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_b
 
 size_t TCPConnection::time_since_last_segment_received() const { return _time_since_last_segment_received; }
 
-void TCPConnection::segment_received(const TCPSegment &seg) {     
-    _time_since_last_segment_received=0;
+void TCPConnection::segment_received(const TCPSegment &seg) {
+    _time_since_last_segment_received = 0;
     const TCPHeader &header = seg.header();
 
     // if the connection is not active yet, activate the connection only if the SYN flag is received
-    if(!_active) {
-        if(header.syn) {
+    if (!_active) {
+        if (header.syn) {
             _active = true;
             _receiver.segment_received(seg);
             // if(_is_syn_sent) {
@@ -39,8 +39,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
 
     // if the segment has the RST flag
-    if(header.rst) {        
-        _active = false; // connection is dead, active() should return false
+    if (header.rst) {
+        _active = false;  // connection is dead, active() should return false
 
         // set the error flag on the inbound and outbound ByteStreams
         _receiver.stream_out().set_error();
@@ -49,24 +49,25 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         return;
     }
 
-    _receiver.segment_received(seg); // call the receiver's segment_received() to pass the segment
+    _receiver.segment_received(seg);  // call the receiver's segment_received() to pass the segment
 
     // if the segment has the ACK flag
-    if(header.ack) {
+    if (header.ack) {
         // call the sender's ack_received() to pass the remote peer's receiver's ackno and window_size
-        _sender.ack_received(header.ackno, header.win); 
+        _sender.ack_received(header.ackno, header.win);
     }
-    
+
     // if local receiver has ackno
-    if(_receiver.ackno().has_value()) {
+    if (_receiver.ackno().has_value()) {
         _sender.fill_window();
     }
 
-    if(_is_fin_sent) {
-        if(header.ackno==_sender.next_seqno()) { // if local's FIN segment was acked
-            _is_fin_acked=true; // set _is_fin_acked
+    if (_is_fin_sent) {
+        if (header.ackno == _sender.next_seqno()) {  // if local's FIN segment was acked
+            _is_fin_acked = true;                    // set _is_fin_acked
             // if _linger_after_streams_finish is false, there's no need to lingering. so connection is over...
-            _active = _active && _linger_after_streams_finish; // set _active false if linger_after_streams_finish is false
+            _active =
+                _active && _linger_after_streams_finish;  // set _active false if linger_after_streams_finish is false
         }
     } else {
         // if remote peer was the first one to end its stream. -> passive close
@@ -74,17 +75,18 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     }
 
     // send ack only to remote peer
-    if(seg.length_in_sequence_space()>0 && _sender.segments_out().empty()) {
+    if (seg.length_in_sequence_space() > 0 && _sender.segments_out().empty()) {
         _sender.send_empty_segment();
     }
 
     // respond to a "keep-alive" segment even though they do not occupy any sequence numbers
-    if(_receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0) && (seg.header().seqno == _receiver.ackno().value() - 1)) {
+    if (_receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0) &&
+        (seg.header().seqno == _receiver.ackno().value() - 1)) {
         _sender.send_empty_segment();
     }
 
-    flush_sender(); // send all segments
- }
+    flush_sender();  // send all segments
+}
 
 bool TCPConnection::active() const { return _active; }
 
@@ -100,12 +102,12 @@ size_t TCPConnection::write(const string &data) {
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
-void TCPConnection::tick(const size_t ms_since_last_tick) { 
-    _time_since_last_segment_received += ms_since_last_tick; // update time_since_last_segment_received
-    _sender.tick(ms_since_last_tick); // tell the sender about the passage of time
+void TCPConnection::tick(const size_t ms_since_last_tick) {
+    _time_since_last_segment_received += ms_since_last_tick;  // update time_since_last_segment_received
+    _sender.tick(ms_since_last_tick);                         // tell the sender about the passage of time
 
     // if the number of consecutive retransmissions is more than an upper limit
-    if(_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
+    if (_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
         send_rst();
         return;
     }
@@ -115,20 +117,20 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     // prereq #1 : inbound stream has been fully assembled and has ended
     // prereq #2 : outbound stream has been ended and fully sent
     // prereq #3 : outbound stream has been fully acknowledged by remote peer
-    if(_receiver.stream_out().input_ended() && _is_fin_acked) {
-        if(_linger_after_streams_finish==false) { // no need to linger
+    if (_receiver.stream_out().input_ended() && _is_fin_acked) {
+        if (_linger_after_streams_finish == false) {  // no need to linger
             _active = false;
-        } else { // need to linger
+        } else {  // need to linger
             // connection is only done after enough time has elapsed
             // since the last segment was received
-            if(_time_since_last_segment_received >= 10*_cfg.rt_timeout) {
+            if (_time_since_last_segment_received >= 10 * _cfg.rt_timeout) {
                 _active = false;
             }
         }
     }
 
-    flush_sender(); // if there exist segments to send, send them
- }
+    flush_sender();  // if there exist segments to send, send them
+}
 
 void TCPConnection::end_input_stream() {
     // give the end_input signal to the outbound stream
@@ -140,8 +142,8 @@ void TCPConnection::end_input_stream() {
 }
 
 void TCPConnection::connect() {
-    _active=true;
-    _sender.fill_window(); // create a SYN segment
+    _active = true;
+    _sender.fill_window();  // create a SYN segment
     flush_sender();
     // _is_syn_sent=true;
 }
@@ -163,19 +165,21 @@ void TCPConnection::flush_sender() {
     while (!_sender.segments_out().empty()) {
         TCPSegment front_seg = _sender.segments_out().front();
         _sender.segments_out().pop();
-    
+
         // before sending the segment, ask the TCPReceiver for ackno and window size
-        if(_receiver.ackno().has_value()) { // if there is an ackno,
+        if (_receiver.ackno().has_value()) {  // if there is an ackno,
             front_seg.header().ackno = _receiver.ackno().value();
-            front_seg.header().ack = true; // set ack flag
+            front_seg.header().ack = true;  // set ack flag
         }
-        front_seg.header().win = _receiver.window_size() < numeric_limits<uint16_t>::max() ? _receiver.window_size() : numeric_limits<uint16_t>::max();
+        front_seg.header().win = _receiver.window_size() < numeric_limits<uint16_t>::max()
+                                     ? _receiver.window_size()
+                                     : numeric_limits<uint16_t>::max();
 
         // push(send) the segment into outboud queue
         _segments_out.push(front_seg);
 
-        if(front_seg.header().fin) { // if FIN flag is set
-            _is_fin_sent=true; // set _is_fin_sent
+        if (front_seg.header().fin) {  // if FIN flag is set
+            _is_fin_sent = true;       // set _is_fin_sent
         }
     }
 }
@@ -188,13 +192,13 @@ void TCPConnection::send_rst() {
     _active = false;
 
     // send a reset segment to the remote peer
-    while(!_sender.segments_out().empty()) {
+    while (!_sender.segments_out().empty()) {
         // before creating a reset segment, empty out the sender's semgnets_out queue
         _sender.segments_out().pop();
     }
     _sender.send_empty_segment();
     TCPSegment rst_seg = _sender.segments_out().front();
     _sender.segments_out().pop();
-    rst_seg.header().rst=true;
+    rst_seg.header().rst = true;
     _segments_out.push(rst_seg);
 }
