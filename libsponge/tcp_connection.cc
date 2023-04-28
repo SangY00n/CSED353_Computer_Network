@@ -29,11 +29,11 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         if(header.syn) {
             _active = true;
             _receiver.segment_received(seg);
-            if(_is_syn_sent) {
-                _is_syn_acked=true;
-            } else {
-                connect();
-            }
+            // if(_is_syn_sent) {
+            //     _is_syn_acked=true;
+            // } else {
+            //     connect();
+            // }
         }
         return;
     }
@@ -143,7 +143,7 @@ void TCPConnection::connect() {
     _active=true;
     _sender.fill_window(); // create a SYN segment
     flush_sender();
-    _is_syn_sent=true;
+    // _is_syn_sent=true;
 }
 
 TCPConnection::~TCPConnection() {

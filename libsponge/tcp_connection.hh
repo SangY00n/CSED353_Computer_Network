@@ -24,8 +24,8 @@ class TCPConnection {
     void flush_sender();
     size_t _time_since_last_segment_received{0};
     bool _active{true};
-    bool _is_syn_sent{false};
-    bool _is_syn_acked{false};
+    // bool _is_syn_sent{false};
+    // bool _is_syn_acked{false};
     bool _is_fin_sent{false};
     bool _is_fin_acked{false};
 
