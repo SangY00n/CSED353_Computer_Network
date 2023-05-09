@@ -175,7 +175,7 @@ void TCPConnection::flush_sender() {
                                      ? _receiver.window_size()
                                      : numeric_limits<uint16_t>::max();
 
-        // push(send) the segment into outboud queue
+        // push(send) the segment into outbound queue
         _segments_out.push(front_seg);
 
         if (front_seg.header().fin) {  // if FIN flag is set
