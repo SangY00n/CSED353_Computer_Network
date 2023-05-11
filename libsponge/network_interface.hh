@@ -47,7 +47,7 @@ class NetworkInterface {
     std::unordered_map<uint32_t, std::pair<EthernetAddress, size_t>> _ethernet_addr_cache{};
 
     // If the destination Ethernet addr is unknown, queue the IP datagram -> it can be sent after the ARP reply is received
-    std::list<std::pair<InternetDatagram, Address>> _queueing_IP_datagrams{};
+    std::list<std::pair<InternetDatagram, uint32_t>> _queueing_IP_datagrams{};
 
     // DON'T send the same ARP request about the same IP addr in the last 5 secs
     // the timer to prevent duplicated ARP request

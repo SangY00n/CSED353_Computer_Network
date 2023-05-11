@@ -68,7 +68,7 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
             _frames_out.push(frame_to_send);
         }
         // queue the IP datagram -> it can be sent after the ARP reply is received
-        _queueing_IP_datagrams.push_back(make_pair(dgram, next_hop));
+        _queueing_IP_datagrams.push_back(make_pair(dgram, next_hop_ip));
     }   
 }
 
@@ -79,4 +79,22 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void NetworkInterface::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
+void NetworkInterface::tick(const size_t ms_since_last_tick) { 
+    std::list<uint32_t> keys_to_erase;
+
+    for (auto i: _ethernet_addr_cache) {
+        i.second.second += ms_since_last_tick;
+        if (i.second.second >= CACHE_VALID_TIME) {
+            keys_to_erase.push_back(i.first);
+        }
+    }
+
+    for (auto k: keys_to_erase) {
+        std::unordered_map<uint32_t, std::pair<EthernetAddress, size_t>>::iterator it = _ethernet_addr_cache.find(k);
+        _ethernet_addr_cache.erase(it);
+    }
+
+    for (auto i: _arp_timer) {
+        i.second += ms_since_last_tick;
+    }
+}
