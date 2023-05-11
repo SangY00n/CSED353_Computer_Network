@@ -7,6 +7,8 @@
 
 #include <optional>
 #include <queue>
+#include <unordered_map>
+#include <list>
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
@@ -29,6 +31,7 @@
 //! the network interface passes it up the stack. If it's an ARP
 //! request or reply, the network interface processes the frame
 //! and learns or replies as necessary.
+
 class NetworkInterface {
   private:
     //! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface
@@ -39,6 +42,19 @@ class NetworkInterface {
 
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
+
+    // mapping btw the sdender's IP addr(uint32_t) and < Ethernet address , timer(size_t) > pair
+    std::unordered_map<uint32_t, std::pair<EthernetAddress, size_t>> _ethernet_addr_cache{};
+
+    // If the destination Ethernet addr is unknown, queue the IP datagram -> it can be sent after the ARP reply is received
+    std::list<std::pair<InternetDatagram, Address>> _queueing_IP_datagrams{};
+
+    // DON'T send the same ARP request about the same IP addr in the last 5 secs
+    // the timer to prevent duplicated ARP request
+    std::unordered_map<uint32_t, size_t> _arp_timer{};
+    
+    static constexpr size_t ARP_REQ_TIME = 5 * 1000; // 5 secs
+    static constexpr size_t CACHE_VALID_TIME = 30 * 1000; // 30 secs
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

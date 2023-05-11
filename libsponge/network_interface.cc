@@ -33,7 +33,43 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     // convert IP address of next hop to raw 32-bit representation (used in ARP header)
     const uint32_t next_hop_ip = next_hop.ipv4_numeric();
 
-    DUMMY_CODE(dgram, next_hop, next_hop_ip);
+    EthernetFrame frame_to_send;
+    EthernetHeader frame_header;
+
+    // if IP addr - ethernet addr pair is cached (the est Ethernet addr is already known)
+    if (_ethernet_addr_cache.count(next_hop_ip) != 0) {
+        frame_header.src = _ethernet_address;
+        frame_header.dst = _ethernet_addr_cache[next_hop_ip].first;
+        frame_header.type = EthernetHeader::TYPE_IPv4;
+        frame_to_send.header() = frame_header;
+        frame_to_send.payload() = dgram.serialize();
+
+        _frames_out.push(frame_to_send);
+    }
+    // if not cached (the dst Ethernet addr is unknown)
+    else {
+        // broadcast an ARP for the next hop's Ethernet addr
+        if (_arp_timer.count(next_hop_ip) == 0 || _arp_timer[next_hop_ip] >= ARP_REQ_TIME) {
+            _arp_timer[next_hop_ip] = 0; // initialize the timer for the next_hop_ip
+
+            ARPMessage arp_req;
+            arp_req.opcode = ARPMessage::OPCODE_REQUEST;
+            arp_req.sender_ethernet_address = _ethernet_address;
+            arp_req.sender_ip_address = _ip_address.ipv4_numeric();
+            arp_req.target_ethernet_address = EthernetAddress{};
+            arp_req.target_ip_address = next_hop_ip;
+
+            frame_header.src = _ethernet_address;
+            frame_header.dst = ETHERNET_BROADCAST;
+            frame_header.type = EthernetHeader::TYPE_ARP;
+            frame_to_send.header() = frame_header;
+            frame_to_send.payload() = arp_req.serialize();
+
+            _frames_out.push(frame_to_send);
+        }
+        // queue the IP datagram -> it can be sent after the ARP reply is received
+        _queueing_IP_datagrams.push_back(make_pair(dgram, next_hop));
+    }   
 }
 
 //! \param[in] frame the incoming Ethernet frame
