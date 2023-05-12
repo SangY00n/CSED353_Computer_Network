@@ -43,7 +43,7 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
-    // mapping btw the sdender's IP addr(uint32_t) and < Ethernet address , timer(size_t) > pair
+    // mapping btw the sender's IP addr(uint32_t) and < Ethernet address , timer(size_t) > pair
     std::unordered_map<uint32_t, std::pair<EthernetAddress, size_t>> _ethernet_addr_cache{};
 
     // If the destination Ethernet addr is unknown, queue the IP datagram -> it can be sent after the ARP reply is
