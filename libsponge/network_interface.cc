@@ -78,7 +78,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 
     // should ignore any frames not destined for the network interface
     // (dst is either the broadcase addr or the interface's own Ethernet addr)
-    if (!(frame_header.dst == ETHERNET_BROADCAST || frame_header.dst != _ethernet_address)) {
+    if (!(frame_header.dst == ETHERNET_BROADCAST || frame_header.dst == _ethernet_address)) {
         return {};
     }
 
@@ -93,7 +93,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
         }
     }
     // if frame is ARP,
-    else if (frame_header.type == EthernetHeader::TYPE_ARP) {
+    else {
         ARPMessage msg;
         ParseResult parsing_result = msg.parse(frame.payload()); // parse the payload as an ARPMessage
         if (parsing_result == ParseResult::NoError) { // if successful
@@ -110,16 +110,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
             std::list<std::pair<InternetDatagram, uint32_t>>::iterator it = _queueing_IP_datagrams.begin();
             while (it != _queueing_IP_datagrams.end()) {
                 if((*it).second == msg.sender_ip_address) {
-                    // EthernetFrame frame_to_send;
-                    // EthernetHeader header_to_send;
-                    // header_to_send.src = _ethernet_address;
-                    // header_to_send.dst = msg.sender_ethernet_address;
-                    // header_to_send.type = EthernetHeader::TYPE_IPv4;
-                    // frame_to_send.header() = header_to_send;
-                    // frame_to_send.payload() = (*it).first.serialize();
-
-                    // _frames_out.push(frame_to_send);
-
                     send_datagram((*it).first, Address::from_ipv4_numeric((*it).second));
 
                     _queueing_IP_datagrams.erase(it++);
@@ -139,17 +129,16 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 
 
                 EthernetFrame frame_to_send;
-                EthernetHeader frame_header;
-                frame_header.src = _ethernet_address;
-                frame_header.dst = msg.sender_ethernet_address;
-                frame_header.type = EthernetHeader::TYPE_ARP;
-                frame_to_send.header() = frame_header;
+                EthernetHeader header_to_send;
+                header_to_send.src = _ethernet_address;
+                header_to_send.dst = msg.sender_ethernet_address;
+                header_to_send.type = EthernetHeader::TYPE_ARP;
+                frame_to_send.header() = header_to_send;
                 frame_to_send.payload() = arp_rep.serialize();
 
                 _frames_out.push(frame_to_send);
             }
-
-        } else {
+        } else { // if not successful
             return {};
         }
     }

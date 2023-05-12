@@ -55,7 +55,6 @@ class NetworkInterface {
     
     static constexpr size_t ARP_REQ_TIME = 5 * 1000; // 5 secs
     static constexpr size_t CACHE_VALID_TIME = 30 * 1000; // 30 secs
-    
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
