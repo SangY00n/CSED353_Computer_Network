@@ -50,7 +50,7 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
     else {
         // broadcast an ARP for the next hop's Ethernet addr
         if (_arp_timer.count(next_hop_ip) == 0 || _arp_timer[next_hop_ip] >= ARP_REQ_TIME) {
-            _arp_timer[next_hop_ip] = 0; // initialize the timer for the next_hop_ip
+            _arp_timer[next_hop_ip] = 0;  // initialize the timer for the next_hop_ip
 
             ARPMessage arp_req;
             arp_req.opcode = ARPMessage::OPCODE_REQUEST;
@@ -69,7 +69,7 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
         }
         // queue the IP datagram -> it can be sent after the ARP reply is received
         _queueing_IP_datagrams.push_back(make_pair(dgram, next_hop_ip));
-    }   
+    }
 }
 
 //! \param[in] frame the incoming Ethernet frame
@@ -85,18 +85,18 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
     // if frame is IPv4,
     if (frame_header.type == EthernetHeader::TYPE_IPv4) {
         InternetDatagram dgram;
-        ParseResult parsing_result = dgram.parse(frame.payload()); // parse the payload as an InternetDatagram
-        if (parsing_result == ParseResult::NoError) { // if successful
+        ParseResult parsing_result = dgram.parse(frame.payload());  // parse the payload as an InternetDatagram
+        if (parsing_result == ParseResult::NoError) {               // if successful
             return dgram;
-        } else { // if not successful
+        } else {  // if not successful
             return {};
         }
     }
     // if frame is ARP,
     else {
         ARPMessage msg;
-        ParseResult parsing_result = msg.parse(frame.payload()); // parse the payload as an ARPMessage
-        if (parsing_result == ParseResult::NoError) { // if successful
+        ParseResult parsing_result = msg.parse(frame.payload());  // parse the payload as an ARPMessage
+        if (parsing_result == ParseResult::NoError) {             // if successful
             // cache the mapping btw sender's IP addr and Ethernet addr
             _ethernet_addr_cache[msg.sender_ip_address] = make_pair(msg.sender_ethernet_address, 0);
 
@@ -109,7 +109,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
             // send queued IP datagram
             std::list<std::pair<InternetDatagram, uint32_t>>::iterator it = _queueing_IP_datagrams.begin();
             while (it != _queueing_IP_datagrams.end()) {
-                if((*it).second == msg.sender_ip_address) {
+                if ((*it).second == msg.sender_ip_address) {
                     send_datagram((*it).first, Address::from_ipv4_numeric((*it).second));
 
                     _queueing_IP_datagrams.erase(it++);
@@ -127,7 +127,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
                 arp_rep.target_ethernet_address = msg.sender_ethernet_address;
                 arp_rep.target_ip_address = msg.sender_ip_address;
 
-
                 EthernetFrame frame_to_send;
                 EthernetHeader header_to_send;
                 header_to_send.src = _ethernet_address;
@@ -138,7 +137,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 
                 _frames_out.push(frame_to_send);
             }
-        } else { // if not successful
+        } else {  // if not successful
             return {};
         }
     }
@@ -147,22 +146,22 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void NetworkInterface::tick(const size_t ms_since_last_tick) { 
+void NetworkInterface::tick(const size_t ms_since_last_tick) {
     std::list<uint32_t> keys_to_erase;
 
-    for (auto &i: _ethernet_addr_cache) {
+    for (auto &i : _ethernet_addr_cache) {
         i.second.second += ms_since_last_tick;
         if (i.second.second >= CACHE_VALID_TIME) {
             keys_to_erase.push_back(i.first);
         }
     }
 
-    for (auto &k: keys_to_erase) {
+    for (auto &k : keys_to_erase) {
         std::unordered_map<uint32_t, std::pair<EthernetAddress, size_t>>::iterator it = _ethernet_addr_cache.find(k);
         _ethernet_addr_cache.erase(it);
     }
 
-    for (auto &i: _arp_timer) {
+    for (auto &i : _arp_timer) {
         i.second += ms_since_last_tick;
     }
 }
