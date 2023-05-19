@@ -18,6 +18,10 @@ using namespace std;
 template <typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
+bool compare(Route r1, Route r2) {
+    return r1.prefix_length > r2.prefix_length;
+}
+
 //! \param[in] route_prefix The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
 //! \param[in] prefix_length For this route to be applicable, how many high-order (most-significant) bits of the route_prefix will need to match the corresponding bits of the datagram's destination address?
 //! \param[in] next_hop The IP address of the next hop. Will be empty if the network is directly attached to the router (in which case, the next hop address should be the datagram's final destination).
@@ -29,8 +33,8 @@ void Router::add_route(const uint32_t route_prefix,
     cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
-    DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
-    // Your code here.
+    _routing_table.push_back(Route(route_prefix, prefix_length, next_hop, interface_num));
+    sort(_routing_table.begin(), _routing_table.end(), compare);
 }
 
 //! \param[in] dgram The datagram to be routed
