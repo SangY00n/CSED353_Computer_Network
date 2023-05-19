@@ -8,22 +8,37 @@
 #include <vector>
 #include <algorithm>
 
-class Route {
-public:
-    const uint32_t route_prefix;
-    const uint8_t prefix_length;
-    const optional<Address> next_hop;
-    const size_t interface_num;
-    Route(uint32_t route_prefix,
-            uint8_t prefix_length,
-            optional<Address> next_hop,
-            size_t interface_num):route_prefix(route_prefix),prefix_length(prefix_length),next_hop(next_hop),interface_num(interface_num){}
+typedef struct {
+    uint32_t route_prefix;
+    uint8_t prefix_length;
+    std::optional<Address> next_hop;
+    size_t interface_num;  
+} Route;
+
+// class Route {
+// public:
+//     uint32_t route_prefix;
+//     uint8_t prefix_length;
+//     std::optional<Address> next_hop;
+//     size_t interface_num;
+//     Route(uint32_t rt_pre,
+//             uint8_t pre_len,
+//             std::optional<Address> n_hop,
+//             size_t if_num):route_prefix(rt_pre),prefix_length(pre_len),next_hop(n_hop),interface_num(if_num){}
     
-    bool operator<(Route right) const {
-        return this->prefix_length < right.prefix_length;
-    }
-    
-};
+//     bool operator<(Route &right) {
+//         return this->prefix_length < right.prefix_length;
+//     }
+
+//     Route& operator=(const Route&& r) {
+//         route_prefix=r.route_prefix;
+//         prefix_length=r.prefix_length;
+//         next_hop=r.next_hop;
+//         interface_num=r.interface_num;
+
+//         return *this;
+//     }
+// };
 
 //! \brief A wrapper for NetworkInterface that makes the host-side
 //! interface asynchronous: instead of returning received datagrams
@@ -63,7 +78,7 @@ class Router {
     //! The router's collection of network interfaces
     std::vector<AsyncNetworkInterface> _interfaces{};
 
-    std::vector<Route> _routing_table;
+    std::vector<Route> _routing_table{};
 
     //! Send a single datagram from the appropriate outbound interface to the next hop,
     //! as specified by the route with the longest prefix_length that matches the

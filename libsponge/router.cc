@@ -18,7 +18,7 @@ using namespace std;
 template <typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
-bool compare(Route r1, Route r2) {
+bool compare(const Route &r1, const Route &r2) {
     return r1.prefix_length > r2.prefix_length;
 }
 
@@ -33,8 +33,11 @@ void Router::add_route(const uint32_t route_prefix,
     cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
-    _routing_table.push_back(Route(route_prefix, prefix_length, next_hop, interface_num));
-    sort(_routing_table.begin(), _routing_table.end(), compare);
+    Route r = {route_prefix, prefix_length, next_hop, interface_num};
+    // Route r = Route(route_prefix, prefix_length, next_hop, interface_num);
+    _routing_table.push_back(r);
+    std::sort(_routing_table.begin(), _routing_table.end(), compare);
+    // std::sort(_routing_table.begin(), _routing_table.end());
 }
 
 //! \param[in] dgram The datagram to be routed
