@@ -18,10 +18,6 @@ using namespace std;
 template <typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
-bool compare(const Route &r1, const Route &r2) {
-    return r1.prefix_length > r2.prefix_length;
-}
-
 //! \param[in] route_prefix The "up-to-32-bit" IPv4 address prefix to match the datagram's destination address against
 //! \param[in] prefix_length For this route to be applicable, how many high-order (most-significant) bits of the route_prefix will need to match the corresponding bits of the datagram's destination address?
 //! \param[in] next_hop The IP address of the next hop. Will be empty if the network is directly attached to the router (in which case, the next hop address should be the datagram's final destination).
@@ -57,15 +53,17 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
 
     // Since the _routing_table is sorted in descending order of prefix_length,
     // the first match will be the "longest-prefix match".
-    for (auto &r: _routing_table) {
-        const uint32_t bitmask = (r.prefix_length == 0) ? static_cast<uint32_t>(0) : (static_cast<uint32_t>(-1) << (32 - int(r.prefix_length)));
+    for (auto &r : _routing_table) {
+        const uint32_t bitmask = (r.prefix_length == 0) ? static_cast<uint32_t>(0)
+                                                        : (static_cast<uint32_t>(-1) << (32 - int(r.prefix_length)));
         const uint32_t dst_addr_prefix = ((dgram.header().dst) & bitmask);
         const uint32_t r_prefix = ((r.route_prefix) & bitmask);
 
         // If the route r matches with dst addr, send datagram.
         if (r_prefix == dst_addr_prefix) {
-            // If the next_hop is an empty optional, the next_hop for send_datagram() is the datagram's destination address.
-            if(!r.next_hop.has_value()) {
+            // If the next_hop is an empty optional, the next_hop for send_datagram() is the datagram's destination
+            // address.
+            if (!r.next_hop.has_value()) {
                 interface(r.interface_num).send_datagram(dgram, Address::from_ipv4_numeric(dgram.header().dst));
             }
             // Otherwise, the route's next_hop contains the IP address of the next router along the path.

@@ -11,7 +11,7 @@ typedef struct {
     uint32_t route_prefix;
     uint8_t prefix_length;
     std::optional<Address> next_hop;
-    size_t interface_num;  
+    size_t interface_num;
 } Route;
 
 //! \brief A wrapper for NetworkInterface that makes the host-side
