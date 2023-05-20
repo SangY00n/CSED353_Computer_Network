@@ -33,11 +33,14 @@ void Router::add_route(const uint32_t route_prefix,
     cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
-    Route r = {route_prefix, prefix_length, next_hop, interface_num};
-    // Route r = Route(route_prefix, prefix_length, next_hop, interface_num);
-    _routing_table.push_back(r);
-    std::sort(_routing_table.begin(), _routing_table.end(), compare);
-    // std::sort(_routing_table.begin(), _routing_table.end());
+    // Add a route (forwarding rule) to the sorted routing table in descending order of prefix_length.
+    for (auto iter = _routing_table.begin(); iter != _routing_table.end(); iter++) {
+        if (prefix_length > (*iter).prefix_length) {
+            _routing_table.insert(iter, {route_prefix, prefix_length, next_hop, interface_num});
+            return;
+        }
+    }
+    _routing_table.push_back({route_prefix, prefix_length, next_hop, interface_num});
 }
 
 //! \param[in] dgram The datagram to be routed
@@ -55,11 +58,12 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
     // Since the _routing_table is sorted in descending order of prefix_length,
     // the first match will be the "longest-prefix match".
     for (auto &r: _routing_table) {
-        const uint32_t bitmask = (r.prefix_length == static_cast<uint8_t>(32)) ? static_cast<uint32_t>(0) : (static_cast<uint32_t>(-1) << (32 - r.prefix_length));
-        const uint32_t dst_addr_prefix = dgram.header().dst & bitmask;
+        const uint32_t bitmask = (r.prefix_length == 0) ? static_cast<uint32_t>(0) : (static_cast<uint32_t>(-1) << (32 - int(r.prefix_length)));
+        const uint32_t dst_addr_prefix = ((dgram.header().dst) & bitmask);
+        const uint32_t r_prefix = ((r.route_prefix) & bitmask);
 
         // If the route r matches with dst addr, send datagram.
-        if(r.route_prefix == dst_addr_prefix) {
+        if (r_prefix == dst_addr_prefix) {
             // If the next_hop is an empty optional, the next_hop for send_datagram() is the datagram's destination address.
             if(!r.next_hop.has_value()) {
                 interface(r.interface_num).send_datagram(dgram, Address::from_ipv4_numeric(dgram.header().dst));
@@ -68,7 +72,7 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
             else {
                 interface(r.interface_num).send_datagram(dgram, r.next_hop.value());
             }
-            
+
             break;
         }
     }
