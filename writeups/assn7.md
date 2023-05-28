@@ -1,17 +1,17 @@
 Assignment 7 Writeup
 =============
 
-My name: [your name here]
+My name: SangYoon Oh
 
-My POVIS ID: [your povis id here]
+My POVIS ID: dbs1367
 
-My student ID (numeric): [your student id here]
+My student ID (numeric): 20200220
 
-My assignment partner's name: [your partner's name here]
+My assignment partner's name: YuJin Jang
 
-My assignment partner's POVIS ID: [your partner's povis id here]
+My assignment partner's POVIS ID: jangyj2020
 
-My assignment partner's ID (numeric): [your partner's student id here]
+My assignment partner's ID (numeric): 20200927
 
 This assignment took me about [n] hours to do (including the time on studying, designing, and writing the code).
 
