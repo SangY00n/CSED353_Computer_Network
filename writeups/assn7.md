@@ -13,7 +13,7 @@ My assignment partner's POVIS ID: jangyj2020
 
 My assignment partner's ID (numeric): 20200927
 
-This assignment took me about [n] hours to do (including the time on studying, designing, and writing the code).
+This assignment took me about [1] hours to do (including the time on studying, designing, and writing the code).
 
 If you used any part of best-submission codes, specify all the best-submission numbers that you used (e.g., 1, 2): []
 
